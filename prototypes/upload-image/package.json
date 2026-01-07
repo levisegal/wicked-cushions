@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:clean": "npm run clean && next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "clean": "rm -rf .next/cache"
   },
   "dependencies": {
     "next": "16.1.1",

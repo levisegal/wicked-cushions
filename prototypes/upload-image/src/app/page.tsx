@@ -19,15 +19,16 @@ export type ColorVariant = {
 };
 
 const colorVariants: ColorVariant[] = [
-  { id: "black", name: "Black", thumbnail: "/images/products/variant-black.jpg", mainImage: "/images/products/cooling-gel-main.jpg", price: 30.95 },
-  { id: "onyx", name: "Onyx", thumbnail: "/images/products/variant-onyx.jpg", mainImage: "/images/products/cooling-gel-main.jpg", price: 33.95 },
-  { id: "grey", name: "Grey", thumbnail: "/images/products/variant-grey.jpg", mainImage: "/images/products/cooling-gel-main.jpg", price: 33.95 },
-  { id: "green", name: "Green Galaxy", thumbnail: "/images/products/variant-green.jpg", mainImage: "/images/products/cooling-gel-main.jpg", price: 33.95 },
-  { id: "red", name: "Red Camo", thumbnail: "/images/products/variant-red.jpg", mainImage: "/images/products/cooling-gel-main.jpg", price: 33.95 },
-  { id: "white", name: "White", thumbnail: "/images/products/variant-white.jpg", mainImage: "/images/products/cooling-gel-main.jpg", price: 33.95 },
-  { id: "speed", name: "Speed Racer", thumbnail: "/images/products/variant-speed.jpg", mainImage: "/images/products/cooling-gel-main.jpg", price: 33.95 },
-  { id: "electric", name: "Electric Tropics", thumbnail: "/images/products/variant-electric.jpg", mainImage: "/images/products/cooling-gel-main.jpg", price: 33.95 },
-  { id: "tropical", name: "Tropical Sunset", thumbnail: "/images/products/variant-tropical.jpg", mainImage: "/images/products/cooling-gel-main.jpg", price: 33.95 },
+  { id: "black", name: "Black", thumbnail: "/images/products/variants/black.jpg", mainImage: "/images/products/variants/black.jpg", price: 30.95 },
+  { id: "90s-black", name: "90s Black", thumbnail: "/images/products/variants/90s-black.jpg", mainImage: "/images/products/variants/90s-black.jpg", price: 33.95 },
+  { id: "geo-grey", name: "Geo Grey", thumbnail: "/images/products/variants/geo-grey.jpg", mainImage: "/images/products/variants/geo-grey.jpg", price: 33.95 },
+  { id: "red-camo", name: "Red Camo", thumbnail: "/images/products/variants/red-camo.jpg", mainImage: "/images/products/variants/red-camo.jpg", price: 33.95 },
+  { id: "90s-white", name: "90s White", thumbnail: "/images/products/variants/90s-white.jpg", mainImage: "/images/products/variants/90s-white.jpg", price: 33.95 },
+  { id: "speed-racer", name: "Speed Racer", thumbnail: "/images/products/variants/speed-racer.jpg", mainImage: "/images/products/variants/speed-racer.jpg", price: 33.95 },
+  { id: "emerald-tide", name: "Emerald Tide", thumbnail: "/images/products/variants/emerald-tide.jpg", mainImage: "/images/products/variants/emerald-tide.jpg", price: 33.95 },
+  { id: "ivory-tide", name: "Ivory Tide", thumbnail: "/images/products/variants/ivory-tide.jpg", mainImage: "/images/products/variants/ivory-tide.jpg", price: 33.95 },
+  { id: "the-simulation", name: "The Simulation", thumbnail: "/images/products/variants/the-simulation.jpg", mainImage: "/images/products/variants/the-simulation.jpg", price: 33.95 },
+  { id: "kinetic-wave", name: "Kinetic Wave", thumbnail: "/images/products/variants/kinetic-wave.jpg", mainImage: "/images/products/variants/kinetic-wave.jpg", price: 33.95 },
 ];
 
 export default function Home() {
@@ -139,15 +140,33 @@ export default function Home() {
             {/* Try on Your Headphones - AI Feature */}
             <button 
               onClick={() => setIsUploadModalOpen(true)}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-lg flex items-center justify-center gap-2 hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg"
+              className="group relative w-full overflow-hidden rounded-lg border-2 border-[#ff6633]/30 bg-gradient-to-r from-[#1a1a1a] via-[#2a2a2a] to-[#1a1a1a] py-3.5 transition-all duration-300 hover:border-[#ff6633]/60 hover:shadow-[0_0_20px_rgba(255,102,51,0.3)]"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l3.5 3.5M19 3l-3.5 3.5M12 3v4M5 21l3.5-3.5M19 21l-3.5-3.5M12 21v-4M3 12h4M21 12h-4M12 12l2.5-2.5M12 12l-2.5-2.5M12 12l2.5 2.5M12 12l-2.5 2.5" />
-              </svg>
-              <span className="font-semibold">Try on Your Headphones</span>
-              <svg className="w-4 h-4 opacity-80" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L9.19 8.62 2 9.27l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7 5.46-4.73-7.19-.65L12 2z" />
-              </svg>
+              {/* Animated shimmer effect */}
+              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/5 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+              
+              <div className="relative flex items-center justify-center gap-3">
+                {/* Camera icon with glow */}
+                <div className="relative">
+                  <div className="absolute inset-0 animate-pulse rounded-full bg-[#ff6633]/20 blur-md" />
+                  <svg className="relative w-5 h-5 text-[#ff6633]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <circle cx="12" cy="13" r="3" strokeWidth={2} />
+                  </svg>
+                </div>
+                
+                <span className="font-display text-white font-semibold tracking-wide">
+                  See on Your Headphones
+                </span>
+                
+                {/* AI Badge */}
+                <span className="flex items-center gap-1 rounded border border-[#ff6633]/40 bg-[#ff6633]/10 px-2 py-0.5 text-xs font-medium text-[#ff6633]">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7-6.3-4.6L5.7 21l2.3-7-6-4.6h7.6L12 2z" />
+                  </svg>
+                  AI
+                </span>
+              </div>
             </button>
 
             {/* Delivery */}

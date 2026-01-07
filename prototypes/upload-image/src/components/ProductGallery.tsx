@@ -1,15 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ColorVariant } from "@/app/page";
 
 interface ProductGalleryProps {
   selectedVariant: ColorVariant;
 }
 
-const galleryImages = [
-  "/images/products/cooling-gel-main.jpg",
+const staticImages = [
   "/images/products/cooling-gel-side.jpg",
   "/images/products/compatibility.jpg",
   "/images/products/thickness.png",
@@ -18,6 +17,14 @@ const galleryImages = [
 
 export default function ProductGallery({ selectedVariant }: ProductGalleryProps) {
   const [selectedImage, setSelectedImage] = useState(0);
+
+  // Reset to first image when variant changes
+  useEffect(() => {
+    setSelectedImage(0);
+  }, [selectedVariant.id]);
+
+  // Variant main image + static gallery images
+  const galleryImages = [selectedVariant.mainImage, ...staticImages];
 
   return (
     <div className="space-y-4">
@@ -40,7 +47,7 @@ export default function ProductGallery({ selectedVariant }: ProductGalleryProps)
         <div className="flex gap-2 overflow-x-auto flex-1">
           {galleryImages.map((img, index) => (
             <button
-              key={index}
+              key={`${selectedVariant.id}-${index}`}
               onClick={() => setSelectedImage(index)}
               className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
                 selectedImage === index ? "border-[#ff6633]" : "border-gray-200 hover:border-gray-400"
