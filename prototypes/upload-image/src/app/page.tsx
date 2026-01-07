@@ -15,20 +15,22 @@ export type ColorVariant = {
   name: string;
   thumbnail: string;
   mainImage: string;
+  lifestyleImage?: string;
+  verticalImage?: string;
   price: number;
 };
 
 const colorVariants: ColorVariant[] = [
-  { id: "black", name: "Black", thumbnail: "/images/products/variants/black.jpg", mainImage: "/images/products/variants/black.jpg", price: 30.95 },
-  { id: "90s-black", name: "90s Black", thumbnail: "/images/products/variants/90s-black.jpg", mainImage: "/images/products/variants/90s-black.jpg", price: 33.95 },
-  { id: "geo-grey", name: "Geo Grey", thumbnail: "/images/products/variants/geo-grey.jpg", mainImage: "/images/products/variants/geo-grey.jpg", price: 33.95 },
-  { id: "red-camo", name: "Red Camo", thumbnail: "/images/products/variants/red-camo.jpg", mainImage: "/images/products/variants/red-camo.jpg", price: 33.95 },
-  { id: "90s-white", name: "90s White", thumbnail: "/images/products/variants/90s-white.jpg", mainImage: "/images/products/variants/90s-white.jpg", price: 33.95 },
-  { id: "speed-racer", name: "Speed Racer", thumbnail: "/images/products/variants/speed-racer.jpg", mainImage: "/images/products/variants/speed-racer.jpg", price: 33.95 },
-  { id: "emerald-tide", name: "Emerald Tide", thumbnail: "/images/products/variants/emerald-tide.jpg", mainImage: "/images/products/variants/emerald-tide.jpg", price: 33.95 },
-  { id: "ivory-tide", name: "Ivory Tide", thumbnail: "/images/products/variants/ivory-tide.jpg", mainImage: "/images/products/variants/ivory-tide.jpg", price: 33.95 },
-  { id: "the-simulation", name: "The Simulation", thumbnail: "/images/products/variants/the-simulation.jpg", mainImage: "/images/products/variants/the-simulation.jpg", price: 33.95 },
-  { id: "kinetic-wave", name: "Kinetic Wave", thumbnail: "/images/products/variants/kinetic-wave.jpg", mainImage: "/images/products/variants/kinetic-wave.jpg", price: 33.95 },
+  { id: "black", name: "Black", thumbnail: "/images/products/variants/black.jpg", mainImage: "/images/products/variants/full/black.jpg", lifestyleImage: "/images/products/variants/lifestyle/black.jpg", verticalImage: "/images/products/variants/vertical/black.jpg", price: 30.95 },
+  { id: "90s-black", name: "90s Black", thumbnail: "/images/products/variants/90s-black.jpg", mainImage: "/images/products/variants/full/90s-black.jpg", lifestyleImage: "/images/products/variants/lifestyle/90s-black.jpg", verticalImage: "/images/products/variants/vertical/90s-black.jpg", price: 33.95 },
+  { id: "geo-grey", name: "Geo Grey", thumbnail: "/images/products/variants/geo-grey.jpg", mainImage: "/images/products/variants/full/geo-grey.jpg", lifestyleImage: "/images/products/variants/lifestyle/geo-grey.jpg", verticalImage: "/images/products/variants/vertical/geo-grey.jpg", price: 33.95 },
+  { id: "red-camo", name: "Red Camo", thumbnail: "/images/products/variants/red-camo.jpg", mainImage: "/images/products/variants/full/red-camo.jpg", lifestyleImage: "/images/products/variants/lifestyle/red-camo.jpg", verticalImage: "/images/products/variants/vertical/red-camo.jpg", price: 33.95 },
+  { id: "90s-white", name: "90s White", thumbnail: "/images/products/variants/90s-white.jpg", mainImage: "/images/products/variants/full/90s-white.jpg", lifestyleImage: "/images/products/variants/lifestyle/90s-white.jpg", verticalImage: "/images/products/variants/vertical/90s-white.jpg", price: 33.95 },
+  { id: "speed-racer", name: "Speed Racer", thumbnail: "/images/products/variants/speed-racer.jpg", mainImage: "/images/products/variants/full/speed-racer.jpg", lifestyleImage: "/images/products/variants/lifestyle/speed-racer.jpg", verticalImage: "/images/products/variants/vertical/speed-racer.jpg", price: 33.95 },
+  { id: "emerald-tide", name: "Emerald Tide", thumbnail: "/images/products/variants/emerald-tide.jpg", mainImage: "/images/products/variants/full/emerald-tide.jpg", lifestyleImage: "/images/products/variants/lifestyle/emerald-tide.jpg", verticalImage: "/images/products/variants/vertical/emerald-tide.jpg", price: 33.95 },
+  { id: "ivory-tide", name: "Ivory Tide", thumbnail: "/images/products/variants/ivory-tide.jpg", mainImage: "/images/products/variants/full/ivory-tide.jpg", lifestyleImage: "/images/products/variants/lifestyle/ivory-tide.jpg", verticalImage: "/images/products/variants/vertical/ivory-tide.jpg", price: 33.95 },
+  { id: "the-simulation", name: "The Simulation", thumbnail: "/images/products/variants/the-simulation.jpg", mainImage: "/images/products/variants/full/the-simulation.jpg", lifestyleImage: "/images/products/variants/lifestyle/the-simulation.jpg", verticalImage: "/images/products/variants/vertical/the-simulation.jpg", price: 33.95 },
+  { id: "kinetic-wave", name: "Kinetic Wave", thumbnail: "/images/products/variants/kinetic-wave.jpg", mainImage: "/images/products/variants/full/kinetic-wave.jpg", lifestyleImage: "/images/products/variants/lifestyle/kinetic-wave.jpg", verticalImage: "/images/products/variants/vertical/kinetic-wave.jpg", price: 33.95 },
 ];
 
 export default function Home() {
@@ -140,32 +142,53 @@ export default function Home() {
             {/* Try on Your Headphones - AI Feature */}
             <button 
               onClick={() => setIsUploadModalOpen(true)}
-              className="group relative w-full overflow-hidden rounded-lg border-2 border-[#ff6633]/30 bg-gradient-to-r from-[#1a1a1a] via-[#2a2a2a] to-[#1a1a1a] py-3.5 transition-all duration-300 hover:border-[#ff6633]/60 hover:shadow-[0_0_20px_rgba(255,102,51,0.3)]"
+              className="ai-button group relative w-full overflow-hidden rounded-xl p-[2px] transition-all duration-300 hover:scale-[1.01]"
             >
-              {/* Animated shimmer effect */}
-              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/5 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+              {/* Animated gradient border */}
+              <div className="ai-gradient absolute inset-0 rounded-xl opacity-70 transition-opacity duration-500 group-hover:opacity-100" />
               
-              <div className="relative flex items-center justify-center gap-3">
-                {/* Camera icon with glow */}
-                <div className="relative">
-                  <div className="absolute inset-0 animate-pulse rounded-full bg-[#ff6633]/20 blur-md" />
-                  <svg className="relative w-5 h-5 text-[#ff6633]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <circle cx="12" cy="13" r="3" strokeWidth={2} />
-                  </svg>
+              {/* Inner content container */}
+              <div className="relative flex items-center justify-center gap-3 rounded-[10px] bg-[#0a0a0a] px-6 py-4">
+                {/* Aurora glow effects */}
+                <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[10px]">
+                  <div className="aurora-blob-1 absolute -top-8 left-1/4 h-20 w-20 rounded-full bg-[#ff6633]/30 blur-2xl" />
+                  <div className="aurora-blob-2 absolute -bottom-8 right-1/3 h-16 w-16 rounded-full bg-[#9933ff]/25 blur-2xl" />
+                  <div className="aurora-blob-3 absolute top-1/2 right-1/4 h-12 w-12 rounded-full bg-[#33ccff]/20 blur-2xl" />
                 </div>
                 
-                <span className="font-display text-white font-semibold tracking-wide">
+                {/* Floating sparkles */}
+                <div className="pointer-events-none absolute inset-0">
+                  <div className="sparkle absolute top-3 left-[18%] h-1 w-1 rounded-full bg-white" />
+                  <div className="sparkle-delayed absolute bottom-3 right-[22%] h-0.5 w-0.5 rounded-full bg-white/80" />
+                  <div className="sparkle-slow absolute top-1/2 left-[12%] h-0.5 w-0.5 rounded-full bg-[#ff6633]" />
+                </div>
+
+                {/* Camera icon */}
+                <svg className="relative z-10 h-5 w-5 text-white/80 transition-colors group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <circle cx="12" cy="13" r="3" strokeWidth={1.5} />
+                </svg>
+                
+                <span className="relative z-10 font-display text-[15px] font-medium tracking-wide text-white/90 transition-colors group-hover:text-white">
                   See on Your Headphones
                 </span>
                 
-                {/* AI Badge */}
-                <span className="flex items-center gap-1 rounded border border-[#ff6633]/40 bg-[#ff6633]/10 px-2 py-0.5 text-xs font-medium text-[#ff6633]">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7-6.3-4.6L5.7 21l2.3-7-6-4.6h7.6L12 2z" />
+                {/* Modern AI Badge with gradient text */}
+                <div className="relative z-10 flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1 ring-1 ring-white/10 backdrop-blur-sm">
+                  <svg className="ai-sparkle h-3.5 w-3.5" viewBox="0 0 24 24" fill="url(#aiGradient)">
+                    <defs>
+                      <linearGradient id="aiGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#ff6633" />
+                        <stop offset="50%" stopColor="#ff3366" />
+                        <stop offset="100%" stopColor="#9933ff" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M12 0L14.59 8.41L23 11L14.59 13.59L12 22L9.41 13.59L1 11L9.41 8.41L12 0Z" />
                   </svg>
-                  AI
-                </span>
+                  <span className="ai-text bg-gradient-to-r from-[#ff6633] via-[#ff3366] to-[#9933ff] bg-clip-text text-xs font-bold text-transparent">
+                    AI
+                  </span>
+                </div>
               </div>
             </button>
 

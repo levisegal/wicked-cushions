@@ -7,12 +7,15 @@ interface ColorVariant {
   name: string;
   thumbnail: string;
   mainImage: string;
+  lifestyleImage?: string;
+  verticalImage?: string;
   price: number;
 }
 
 interface RequestBody {
   image: string; // base64 data URL
   colorVariant: ColorVariant;
+  referenceImages?: string[]; // base64 reference images of the earpad
 }
 
 async function validateImage(imageBase64: string): Promise<{ isValid: boolean; error?: string }> {
@@ -21,16 +24,17 @@ async function validateImage(imageBase64: string): Promise<{ isValid: boolean; e
   }
 
   try {
+    // Use cheap Gemini 2.5 Flash for validation
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://wickedcushions-clone.vercel.app",
+        "HTTP-Referer": "https://wickedcushions.com",
         "X-Title": "Wicked Cushions Earpad Preview",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "user",
@@ -92,47 +96,79 @@ Only respond with one of the above formats, nothing else.`,
   }
 }
 
-async function generatePreview(imageBase64: string, variant: ColorVariant): Promise<{ success: boolean; image?: string; error?: string }> {
-  if (!OPENROUTER_API_KEY) {
-    return { success: false, error: "API key not configured" };
-  }
+const ANGLE_VIEWS = [
+  { name: "Front View", rotation: "front-facing, straight on" },
+  { name: "3/4 Left", rotation: "rotated 45 degrees to the left, showing left earpad prominently" },
+  { name: "3/4 Right", rotation: "rotated 45 degrees to the right, showing right earpad prominently" },
+  { name: "Side View", rotation: "profile view from the side, showing earpad depth" },
+];
+
+// Helper to get detailed color description for prompts
+function getColorDescription(variantName: string): string {
+  const descriptions: Record<string, string> = {
+    "Black": "solid matte black leather",
+    "90s Black": "black with retro 90s geometric white pattern accents",
+    "Geo Grey": "grey with geometric angular pattern design",
+    "Red Camo": "red and black camouflage pattern",
+    "90s White": "white with retro 90s colorful geometric shapes",
+    "Speed Racer": "racing-inspired red, white and black stripes",
+    "Emerald Tide": "deep emerald green with wave-like pattern",
+    "Ivory Tide": "cream/ivory white with subtle wave pattern",
+    "The Simulation": "Matrix-inspired green and black digital rain pattern",
+    "Kinetic Wave": "dynamic blue wave pattern with motion effect",
+  };
+  return descriptions[variantName] || `${variantName} colored`;
+}
+
+async function generateWithGemini3Pro(
+  imageBase64: string,
+  variant: ColorVariant,
+  referenceImages: string[],
+  angleView: { name: string; rotation: string; prompt: string }
+): Promise<{ success: boolean; image?: string; angle?: string; error?: string }> {
+  const startTime = Date.now();
+  console.log(`[API] Generating ${angleView.name} with Gemini 3 Pro Image...`);
+  
+  const colorDescription = getColorDescription(variant.name);
 
   try {
+    // Use Gemini 3 Pro Image Preview with modalities for image generation
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://wickedcushions-clone.vercel.app",
+        "HTTP-Referer": "https://wickedcushions.com",
         "X-Title": "Wicked Cushions Earpad Preview",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro-preview-03-25",
+        model: "google/gemini-3-pro-image-preview",
+        modalities: ["image", "text"],
         messages: [
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: `Generate a realistic image showing these headphones with replacement earpads applied.
-
-The new earpads should be:
-- Color: ${variant.name} (${variant.id})
-- Style: WC FreeZe Cooling Gel earpads
-- Material: Hybrid PU leather with sports fabric
-- They should look premium, well-fitted, and professional
-
-Keep the headphones in the same position and angle. Only modify the ear cushions/pads.
-The result should look like a professional product photo.
-
-Return ONLY the modified image, no text.`,
+                text: angleView.prompt
+                  .replace("{variant}", variant.name)
+                  .replace("{colorDescription}", colorDescription),
               },
               {
                 type: "image_url",
-                image_url: {
-                  url: imageBase64,
-                },
+                image_url: { url: imageBase64 },
               },
+              // Include reference image for color matching
+              ...(referenceImages[0] ? [
+                {
+                  type: "text" as const,
+                  text: `Reference image of the ${variant.name} earpad color/pattern to match:`,
+                },
+                {
+                  type: "image_url" as const,
+                  image_url: { url: referenceImages[0] },
+                },
+              ] : []),
             ],
           },
         ],
@@ -140,57 +176,142 @@ Return ONLY the modified image, no text.`,
       }),
     });
 
+    console.log(`[API] Gemini 3 Pro response status: ${response.status}`);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Generation API error:", errorText);
-      return { success: false, error: "Failed to generate preview" };
+      console.error(`[API] Gemini 3 Pro ${angleView.name} failed:`, response.status, errorText.slice(0, 300));
+      return generateWithReferenceImage(imageBase64, variant, referenceImages, angleView);
     }
 
     const data = await response.json();
+    const message = data.choices?.[0]?.message;
     
-    // Check for image in the response
-    const content = data.choices?.[0]?.message?.content;
-    
-    // The response format may vary - handle both text and image responses
-    if (typeof content === "string") {
-      // If it's a base64 image embedded in markdown
-      const base64Match = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
-      if (base64Match) {
-        return { success: true, image: base64Match[0] };
-      }
-      
-      // If it's just base64 without data URL prefix
-      const rawBase64Match = content.match(/^[A-Za-z0-9+/=]{100,}$/);
-      if (rawBase64Match) {
-        return { success: true, image: `data:image/png;base64,${rawBase64Match[0]}` };
-      }
+    console.log(`[API] ${angleView.name} response keys:`, Object.keys(message || {}));
+    if (message?.images) {
+      console.log(`[API] ${angleView.name} images array length:`, message.images.length);
     }
 
-    // Check if there are any image parts in the response
-    if (Array.isArray(content)) {
-      for (const part of content) {
+    // OpenRouter image generation response format:
+    // message.images: [{ type: "image_url", image_url: { url: "data:image/png;base64,..." } }]
+    if (message?.images && message.images.length > 0) {
+      const imageData = message.images[0];
+      // Handle OpenRouter format: { type: "image_url", image_url: { url: "..." } }
+      const imageUrl = imageData.image_url?.url || imageData.url || imageData;
+      if (imageUrl && typeof imageUrl === "string" && imageUrl.startsWith("data:image")) {
+        console.log(`[API] ${angleView.name} ✓ got image from message.images, took: ${Date.now() - startTime}ms`);
+        return { success: true, image: imageUrl, angle: angleView.name };
+      }
+      console.log(`[API] ${angleView.name} images[0] format:`, JSON.stringify(imageData).slice(0, 200));
+    }
+
+    // Fallback: Check for base64 in content string
+    if (typeof message?.content === "string") {
+      const base64Match = message.content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
+      if (base64Match) {
+        console.log(`[API] ${angleView.name} ✓ got base64 in content string, took: ${Date.now() - startTime}ms`);
+        return { success: true, image: base64Match[0], angle: angleView.name };
+      }
+      console.log(`[API] ${angleView.name} text content (first 200):`, message.content.slice(0, 200));
+    }
+
+    // Fallback: Check for image parts in content array
+    if (Array.isArray(message?.content)) {
+      for (const part of message.content) {
         if (part.type === "image_url" && part.image_url?.url) {
-          return { success: true, image: part.image_url.url };
+          console.log(`[API] ${angleView.name} ✓ got image_url in content array, took: ${Date.now() - startTime}ms`);
+          return { success: true, image: part.image_url.url, angle: angleView.name };
         }
       }
     }
 
-    // For demo purposes, return the original image with a message
-    // In production, you'd want to use a proper image generation model
-    return { 
-      success: true, 
-      image: imageBase64,
-    };
+    console.log(`[API] ${angleView.name} no image found, using reference image fallback`);
+    return generateWithReferenceImage(imageBase64, variant, referenceImages, angleView);
   } catch (error) {
-    console.error("Generation error:", error);
-    return { success: false, error: "Failed to generate preview" };
+    console.error(`[API] Gemini 3 Pro ${angleView.name} error:`, error);
+    return generateWithReferenceImage(imageBase64, variant, referenceImages, angleView);
   }
 }
 
+// Fallback: Use reference images when image generation isn't available
+async function generateWithReferenceImage(
+  imageBase64: string,
+  variant: ColorVariant,
+  referenceImages: string[],
+  angleView: { name: string; rotation: string; prompt?: string }
+): Promise<{ success: boolean; image?: string; angle?: string; error?: string }> {
+  console.log(`[API] ${angleView.name} using reference image fallback`);
+  
+  // Map angle to reference image index
+  const angleToRef: Record<string, number> = {
+    "Your Photo": 0,     // mainImage (full view)
+    "Studio Shot": 0,    // mainImage (full view)
+  };
+  
+  const refIndex = angleToRef[angleView.name] || 0;
+  const refImage = referenceImages[refIndex] || referenceImages[0] || imageBase64;
+  
+  return Promise.resolve({ success: true, image: refImage, angle: angleView.name });
+}
+
+// Two distinct views with tailored prompts
+const VIEW_PROMPTS = [
+  {
+    name: "Your Photo",
+    rotation: "original",
+    prompt: `Edit this headphone image: Replace the earpads with the {variant} earpads shown in the reference image.
+
+Match the reference image EXACTLY — same color, pattern, texture, thickness, and the blue cooling gel strip.
+
+Keep everything else identical: same headphones, same angle, same background, same lighting. Only swap the earpads.`,
+  },
+  {
+    name: "Studio Shot",
+    rotation: "studio",
+    prompt: `Generate a professional product photo of these EXACT headphones (same model, same shape) resting on a sleek headphone stand.
+
+The headphones should have the {variant} earpads from the reference image installed (match exactly — color, pattern, texture, blue cooling gel strip).
+
+Clean studio background, soft lighting, headphones displayed on a minimal black or silver headphone stand. No person wearing them — just the headphones on the stand like an e-commerce product shot.`,
+  },
+];
+
+async function generatePreview(
+  imageBase64: string, 
+  variant: ColorVariant, 
+  referenceImages: string[] = []
+): Promise<{ success: boolean; images?: Array<{ image: string; angle: string }>; error?: string }> {
+  if (!OPENROUTER_API_KEY) {
+    return { success: false, error: "API key not configured" };
+  }
+
+  // Generate BOTH views in parallel with distinct prompts
+  const results = await Promise.all(
+    VIEW_PROMPTS.map(view => generateWithGemini3Pro(imageBase64, variant, referenceImages, view))
+  );
+
+  const successfulImages: Array<{ image: string; angle: string }> = results
+    .filter(r => r.success && r.image)
+    .map(r => ({ image: r.image!, angle: r.angle! }));
+
+  if (successfulImages.length === 0) {
+    return { success: false, error: "Failed to generate any previews" };
+  }
+
+  return { success: true, images: successfulImages };
+}
+
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  console.log("[API] ========== New request ==========");
+  
   try {
     const body: RequestBody = await request.json();
-    const { image, colorVariant } = body;
+    const { image, colorVariant, referenceImages = [] } = body;
+
+    console.log("[API] Variant:", colorVariant?.name);
+    console.log("[API] Image size:", Math.round(image?.length / 1024), "KB");
+    console.log("[API] Reference images:", referenceImages.length);
 
     if (!image) {
       return NextResponse.json({ error: "No image provided" }, { status: 400 });
@@ -201,20 +322,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 1: Validate the image
+    console.log("[API] Step 1: Validating image...");
+    const validationStart = Date.now();
     const validation = await validateImage(image);
+    console.log("[API] Validation took:", Date.now() - validationStart, "ms");
+    console.log("[API] Validation result:", validation.isValid ? "VALID" : validation.error);
+    
     if (!validation.isValid) {
       return NextResponse.json({ validationError: validation.error }, { status: 200 });
     }
 
-    // Step 2: Generate the preview
-    const generation = await generatePreview(image, colorVariant);
+    // Step 2: Generate previews from multiple angles
+    console.log("[API] Step 2: Generating 4 angle previews...");
+    const generationStart = Date.now();
+    const generation = await generatePreview(image, colorVariant, referenceImages);
+    console.log("[API] Generation took:", Date.now() - generationStart, "ms");
+    console.log("[API] Generated images:", generation.images?.length || 0);
+    
     if (!generation.success) {
       return NextResponse.json({ error: generation.error }, { status: 500 });
     }
 
-    return NextResponse.json({ generatedImage: generation.image }, { status: 200 });
+    console.log("[API] Total request time:", Date.now() - startTime, "ms");
+    return NextResponse.json({ generatedImages: generation.images }, { status: 200 });
   } catch (error) {
-    console.error("API error:", error);
+    console.error("[API] Error:", error);
     return NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }

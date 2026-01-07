@@ -8,13 +8,6 @@ interface ProductGalleryProps {
   selectedVariant: ColorVariant;
 }
 
-const staticImages = [
-  "/images/products/cooling-gel-side.jpg",
-  "/images/products/compatibility.jpg",
-  "/images/products/thickness.png",
-  "/images/products/headphones-preview.jpg",
-];
-
 export default function ProductGallery({ selectedVariant }: ProductGalleryProps) {
   const [selectedImage, setSelectedImage] = useState(0);
 
@@ -23,8 +16,12 @@ export default function ProductGallery({ selectedVariant }: ProductGalleryProps)
     setSelectedImage(0);
   }, [selectedVariant.id]);
 
-  // Variant main image + static gallery images
-  const galleryImages = [selectedVariant.mainImage, ...staticImages];
+  // Gallery: mainImage + lifestyleImage + verticalImage (3 images only)
+  const galleryImages = [
+    selectedVariant.mainImage,
+    ...(selectedVariant.lifestyleImage ? [selectedVariant.lifestyleImage] : []),
+    ...(selectedVariant.verticalImage ? [selectedVariant.verticalImage] : []),
+  ];
 
   return (
     <div className="space-y-4">

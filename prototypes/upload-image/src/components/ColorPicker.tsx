@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { ColorVariant } from "@/app/page";
 
 interface ColorPickerProps {
@@ -17,26 +16,27 @@ export default function ColorPicker({ variants, selectedVariant, onSelect }: Col
         <span className="font-display font-bold uppercase">{selectedVariant.name}</span>
       </div>
       <div className="flex gap-2 flex-wrap">
-        {variants.map((variant) => (
-          <button
-            key={variant.id}
-            onClick={() => onSelect(variant)}
-            className={`w-10 h-10 rounded-full overflow-hidden border-2 transition-all ${
-              selectedVariant.id === variant.id
-                ? "border-[#ff6633] ring-2 ring-[#ff6633] ring-offset-1"
-                : "border-gray-200 hover:border-gray-400"
-            }`}
-            title={variant.name}
-          >
-            <Image
-              src={variant.thumbnail}
-              alt={variant.name}
-              width={40}
-              height={40}
-              className="w-full h-full object-cover"
+        {variants.map((variant) => {
+          const isSelected = selectedVariant.id === variant.id;
+          return (
+            <button
+              key={variant.id}
+              onClick={() => onSelect(variant)}
+              className={`relative w-[38px] h-[38px] rounded-lg border transition-all bg-cover bg-center bg-no-repeat ${
+                isSelected
+                  ? "border-[#ff6633] bg-[length:90%]"
+                  : "border-transparent hover:border-gray-300"
+              }`}
+              style={{
+                backgroundImage: isSelected
+                  ? `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23fff' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='3'/%3E%3C/svg%3E"), url(${variant.thumbnail})`
+                  : `url(${variant.thumbnail})`,
+              }}
+              title={variant.name}
+              aria-label={variant.name}
             />
-          </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
