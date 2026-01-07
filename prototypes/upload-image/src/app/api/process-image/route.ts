@@ -255,24 +255,31 @@ async function generateWithReferenceImage(
 }
 
 // Two distinct views with tailored prompts
+// Note: In the API call, the FIRST image is the user's uploaded photo, the SECOND image is the earpad reference
 const VIEW_PROMPTS = [
   {
     name: "Your Photo",
     rotation: "original",
-    prompt: `Edit this headphone image: Replace the earpads with the {variant} earpads shown in the reference image.
+    prompt: `You are given two images:
+1. USER'S PHOTO: The first image shows the user's actual headphones
+2. EARPAD REFERENCE: The second image shows the {variant} replacement earpads
 
-Match the reference image EXACTLY — same color, pattern, texture, thickness, and the blue cooling gel strip.
-
-Keep everything else identical: same headphones, same angle, same background, same lighting. Only swap the earpads.`,
+Edit the USER'S PHOTO: Keep everything exactly the same (their headphones, angle, background, lighting) but swap the earpads to match the EARPAD REFERENCE image exactly — same color, pattern, texture, and blue cooling gel strip.`,
   },
   {
     name: "Studio Shot",
     rotation: "studio",
-    prompt: `Generate a professional product photo of these EXACT headphones (same model, same shape) resting on a sleek headphone stand.
+    prompt: `You are given two images:
+1. USER'S PHOTO: The first image shows the user's actual headphones — this is the EXACT headphone model to recreate
+2. EARPAD REFERENCE: The second image shows the {variant} replacement earpads
 
-The headphones should have the {variant} earpads from the reference image installed (match exactly — color, pattern, texture, blue cooling gel strip).
+Create a studio product photo with:
+- The EXACT same headphone model from the USER'S PHOTO (same brand, shape, frame color, every detail)
+- The earpads from the EARPAD REFERENCE (same color, pattern, blue cooling gel strip)
+- Headphones placed on a minimal headphone stand
+- Clean studio background, soft lighting
 
-Clean studio background, soft lighting, headphones displayed on a minimal black or silver headphone stand. No person wearing them — just the headphones on the stand like an e-commerce product shot.`,
+The headphones must be identical to the user's — only the earpads and background change.`,
   },
 ];
 
@@ -333,7 +340,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: Generate previews from multiple angles
-    console.log("[API] Step 2: Generating 4 angle previews...");
+    console.log("[API] Step 2: Generating previews...");
     const generationStart = Date.now();
     const generation = await generatePreview(image, colorVariant, referenceImages);
     console.log("[API] Generation took:", Date.now() - generationStart, "ms");
