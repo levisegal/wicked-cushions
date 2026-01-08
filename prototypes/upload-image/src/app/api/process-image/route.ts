@@ -104,6 +104,73 @@ const ANGLE_VIEWS = [
   { name: "Side View", rotation: "profile view from the side, showing earpad depth" },
 ];
 
+// Seedream supported aspect ratios
+const SEEDREAM_ASPECT_RATIOS = [
+  { ratio: "1:1", value: 1 },
+  { ratio: "2:3", value: 2/3 },
+  { ratio: "3:2", value: 3/2 },
+  { ratio: "3:4", value: 3/4 },
+  { ratio: "4:3", value: 4/3 },
+  { ratio: "4:5", value: 4/5 },
+  { ratio: "5:4", value: 5/4 },
+  { ratio: "9:16", value: 9/16 },
+  { ratio: "16:9", value: 16/9 },
+  { ratio: "21:9", value: 21/9 },
+];
+
+// Get closest Seedream aspect ratio for a given ratio
+function getClosestAspectRatio(width: number, height: number): string {
+  const inputRatio = width / height;
+  let closest = SEEDREAM_ASPECT_RATIOS[0];
+  let minDiff = Math.abs(inputRatio - closest.value);
+  
+  for (const ar of SEEDREAM_ASPECT_RATIOS) {
+    const diff = Math.abs(inputRatio - ar.value);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = ar;
+    }
+  }
+  return closest.ratio;
+}
+
+// Extract dimensions from base64 image (works for JPEG and PNG)
+async function getImageDimensions(base64: string): Promise<{ width: number; height: number } | null> {
+  try {
+    // For server-side, we parse the image header bytes
+    const data = base64.split(",")[1];
+    const buffer = Buffer.from(data, "base64");
+    
+    // Check for JPEG (starts with FFD8)
+    if (buffer[0] === 0xFF && buffer[1] === 0xD8) {
+      let offset = 2;
+      while (offset < buffer.length) {
+        if (buffer[offset] !== 0xFF) break;
+        const marker = buffer[offset + 1];
+        const length = buffer.readUInt16BE(offset + 2);
+        // SOF markers contain dimensions
+        if (marker >= 0xC0 && marker <= 0xCF && marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC) {
+          const height = buffer.readUInt16BE(offset + 5);
+          const width = buffer.readUInt16BE(offset + 7);
+          return { width, height };
+        }
+        offset += 2 + length;
+      }
+    }
+    
+    // Check for PNG (starts with 89 50 4E 47)
+    if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+      const width = buffer.readUInt32BE(16);
+      const height = buffer.readUInt32BE(20);
+      return { width, height };
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // Helper to get detailed color description for prompts
 function getColorDescription(variantName: string): string {
   const descriptions: Record<string, string> = {
@@ -133,6 +200,17 @@ async function generateImage(
   
   const colorDescription = getColorDescription(variant.name);
 
+  // For Seedream, detect and set aspect ratio
+  let imageConfig = {};
+  if (model.includes("seedream")) {
+    const dims = await getImageDimensions(imageBase64);
+    if (dims) {
+      const aspectRatio = getClosestAspectRatio(dims.width, dims.height);
+      imageConfig = { image_config: { aspect_ratio: aspectRatio } };
+      console.log(`[API] Seedream aspect ratio: ${dims.width}x${dims.height} → ${aspectRatio}`);
+    }
+  }
+
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -145,6 +223,7 @@ async function generateImage(
       body: JSON.stringify({
         model,
         modalities: ["image", "text"],
+        ...imageConfig,
         messages: [
           {
             role: "user",
