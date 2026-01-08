@@ -29,7 +29,7 @@ const LOADING_MESSAGES = {
     { title: "Processing your photo 🖼️", subtitle: "This won't take long" },
   ],
   generating: [
-    { title: "Cushioning in progress 🛋️", subtitle: "Teaching AI the art of earpad fashion" },
+    { title: "Cushioning in progress 🛋️", subtitle: "This usually takes ~30 seconds" },
     { title: "Stitching pixels together 🧵", subtitle: "One stitch at a time..." },
     { title: "Adding the comfy factor ☁️", subtitle: "Making it look cozy" },
     { title: "Generating magic ✨", subtitle: "AI is doing its thing" },
@@ -56,10 +56,51 @@ async function imageUrlToBase64(url: string): Promise<string> {
   });
 }
 
+// Compress image to max dimension and quality
+async function compressImage(file: File, maxDimension = 1200, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = document.createElement("img");
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let { width, height } = img;
+      
+      // Scale down if needed
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = (height / width) * maxDimension;
+          width = maxDimension;
+        } else {
+          width = (width / height) * maxDimension;
+          height = maxDimension;
+        }
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Could not get canvas context"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      const compressed = canvas.toDataURL("image/jpeg", quality);
+      console.log("[Compress] Original:", Math.round(file.size / 1024), "KB → Compressed:", Math.round(compressed.length * 0.75 / 1024), "KB");
+      resolve(compressed);
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 interface GeneratedImage {
   image: string;
   angle: string;
 }
+
+const MODELS = [
+  { id: "google/gemini-3-pro-image-preview", label: "Gemini 3 Pro" },
+  { id: "bytedance-seed/seedream-4.5", label: "Seedream 4.5" },
+];
 
 export default function UploadModal({ isOpen, onClose, selectedVariant }: UploadModalProps) {
   const [status, setStatus] = useState<ProcessingStatus>("idle");
@@ -68,6 +109,7 @@ export default function UploadModal({ isOpen, onClose, selectedVariant }: Upload
   const [selectedAngle, setSelectedAngle] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [messageIndex, setMessageIndex] = useState(0);
+  const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Rotate through messages every 4 seconds during loading states
@@ -98,26 +140,28 @@ export default function UploadModal({ isOpen, onClose, selectedVariant }: Upload
     setErrorMessage(null);
     setGeneratedImages([]);
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = e.target?.result as string;
+    try {
+      // Compress image before sending
+      const base64 = await compressImage(file, 1200, 0.85);
       setUploadedImage(base64);
       setStatus("validating");
-      console.log("[Upload] Image loaded, size:", Math.round(base64.length / 1024), "KB");
+      console.log("[Upload] Image compressed and loaded, size:", Math.round(base64.length / 1024), "KB");
 
       try {
-        // Load reference images of the earpad variant
+        // Load reference image (vertical only)
         const refImageUrls = [
-          selectedVariant.mainImage,
-          selectedVariant.lifestyleImage,
           selectedVariant.verticalImage,
         ].filter(Boolean) as string[];
         
-        console.log("[Upload] Loading", refImageUrls.length, "reference images...");
+        console.log("[Upload] Loading", refImageUrls.length, "reference images:");
+        refImageUrls.forEach((url, i) => console.log(`  [${i + 1}] ${url}`));
         const referenceImages = await Promise.all(
           refImageUrls.map(url => imageUrlToBase64(url))
         );
         console.log("[Upload] Reference images loaded, sending to API...");
+
+        // Switch to "generating" after ~5s (validation is usually 4-5s)
+        const generatingTimeout = setTimeout(() => setStatus("generating"), 5000);
 
         const response = await fetch("/api/process-image", {
           method: "POST",
@@ -126,9 +170,12 @@ export default function UploadModal({ isOpen, onClose, selectedVariant }: Upload
             image: base64,
             colorVariant: selectedVariant,
             referenceImages,
+            model: selectedModel,
           }),
         });
 
+        clearTimeout(generatingTimeout);
+        
         console.log("[Upload] API response status:", response.status);
         const data = await response.json();
         console.log("[Upload] API response data:", data);
@@ -143,8 +190,6 @@ export default function UploadModal({ isOpen, onClose, selectedVariant }: Upload
           setErrorMessage(data.validationError);
           return;
         }
-
-        setStatus("generating");
         
         // Handle multiple generated images from different angles
         if (data.generatedImages && data.generatedImages.length > 0) {
@@ -158,10 +203,12 @@ export default function UploadModal({ isOpen, onClose, selectedVariant }: Upload
         setStatus("error");
         setErrorMessage(error instanceof Error ? error.message : "An error occurred");
       }
-    };
-
-    reader.readAsDataURL(file);
-  }, [selectedVariant]);
+    } catch (error) {
+      console.error("[Upload] Compression error:", error);
+      setStatus("error");
+      setErrorMessage("Failed to process image");
+    }
+  }, [selectedVariant, selectedModel]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -229,9 +276,26 @@ export default function UploadModal({ isOpen, onClose, selectedVariant }: Upload
               
               <div className="text-5xl mb-4">📷</div>
               <h3 className="text-lg font-medium mb-2">Upload a photo of your headphones</h3>
-              <p className="text-gray-500 text-sm mb-6">
+              <p className="text-gray-500 text-sm mb-4">
                 We'll show you how the <span className="font-medium text-[#ff6633]">{selectedVariant.name}</span> earpads will look
               </p>
+
+              {/* Model toggle */}
+              <div className="flex items-center justify-center gap-1 mb-6 p-1 bg-gray-100 rounded-lg w-fit mx-auto">
+                {MODELS.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setSelectedModel(m.id)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                      selectedModel === m.id
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
               
               {/* Action buttons */}
               <div className="flex flex-col sm:flex-row gap-3 justify-center">

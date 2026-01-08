@@ -16,6 +16,7 @@ interface RequestBody {
   image: string; // base64 data URL
   colorVariant: ColorVariant;
   referenceImages?: string[]; // base64 reference images of the earpad
+  model?: string; // "google/gemini-3-pro-image-preview" | "bytedance-seed/seedream-4.5"
 }
 
 async function validateImage(imageBase64: string): Promise<{ isValid: boolean; error?: string }> {
@@ -120,19 +121,19 @@ function getColorDescription(variantName: string): string {
   return descriptions[variantName] || `${variantName} colored`;
 }
 
-async function generateWithGemini3Pro(
+async function generateImage(
   imageBase64: string,
   variant: ColorVariant,
   referenceImages: string[],
-  angleView: { name: string; rotation: string; prompt: string }
+  angleView: { name: string; rotation: string; prompt: string },
+  model: string
 ): Promise<{ success: boolean; image?: string; angle?: string; error?: string }> {
   const startTime = Date.now();
-  console.log(`[API] Generating ${angleView.name} with Gemini 3 Pro Image...`);
+  console.log(`[API] Generating ${angleView.name} with ${model}...`);
   
   const colorDescription = getColorDescription(variant.name);
 
   try {
-    // Use Gemini 3 Pro Image Preview with modalities for image generation
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -142,7 +143,7 @@ async function generateWithGemini3Pro(
         "X-Title": "Wicked Cushions Earpad Preview",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-pro-image-preview",
+        model,
         modalities: ["image", "text"],
         messages: [
           {
@@ -176,11 +177,11 @@ async function generateWithGemini3Pro(
       }),
     });
 
-    console.log(`[API] Gemini 3 Pro response status: ${response.status}`);
+    console.log(`[API] ${model} response status: ${response.status}`);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[API] Gemini 3 Pro ${angleView.name} failed:`, response.status, errorText.slice(0, 300));
+      console.error(`[API] ${model} ${angleView.name} failed:`, response.status, errorText.slice(0, 300));
       return generateWithReferenceImage(imageBase64, variant, referenceImages, angleView);
     }
 
@@ -228,7 +229,7 @@ async function generateWithGemini3Pro(
     console.log(`[API] ${angleView.name} no image found, using reference image fallback`);
     return generateWithReferenceImage(imageBase64, variant, referenceImages, angleView);
   } catch (error) {
-    console.error(`[API] Gemini 3 Pro ${angleView.name} error:`, error);
+    console.error(`[API] ${model} ${angleView.name} error:`, error);
     return generateWithReferenceImage(imageBase64, variant, referenceImages, angleView);
   }
 }
@@ -262,20 +263,20 @@ const VIEW_PROMPTS = [
     rotation: "original",
     prompt: `You are given two images:
 1. USER'S PHOTO: The first image shows the user's actual headphones
-2. EARPAD REFERENCE: The second image shows the {variant} replacement earpads
+2. EARPAD REFERENCE: The second image shows the replacement earpads
 
-Edit the USER'S PHOTO: Keep everything exactly the same (their headphones, angle, background, lighting) but swap the earpads to match the EARPAD REFERENCE image exactly — same color, pattern, texture, and blue cooling gel strip.`,
+Edit the USER'S PHOTO: Keep everything exactly the same (their headphones, angle, background, lighting) but swap the earpads to match the EARPAD REFERENCE image exactly. Match the color, pattern, and texture precisely from the reference.`,
   },
   {
     name: "Studio Shot",
     rotation: "studio",
     prompt: `You are given two images:
 1. USER'S PHOTO: The first image shows the user's actual headphones — this is the EXACT headphone model to recreate
-2. EARPAD REFERENCE: The second image shows the {variant} replacement earpads
+2. EARPAD REFERENCE: The second image shows the replacement earpads
 
 Create a studio product photo with:
 - The EXACT same headphone model from the USER'S PHOTO (same brand, shape, frame color, every detail)
-- The earpads from the EARPAD REFERENCE (same color, pattern, blue cooling gel strip)
+- The earpads matching the EARPAD REFERENCE exactly (same color, pattern, texture)
 - Headphones placed on a minimal headphone stand
 - Clean studio background, soft lighting
 
@@ -286,7 +287,8 @@ The headphones must be identical to the user's — only the earpads and backgrou
 async function generatePreview(
   imageBase64: string, 
   variant: ColorVariant, 
-  referenceImages: string[] = []
+  referenceImages: string[] = [],
+  model: string = "google/gemini-3-pro-image-preview"
 ): Promise<{ success: boolean; images?: Array<{ image: string; angle: string }>; error?: string }> {
   if (!OPENROUTER_API_KEY) {
     return { success: false, error: "API key not configured" };
@@ -294,7 +296,7 @@ async function generatePreview(
 
   // Generate BOTH views in parallel with distinct prompts
   const results = await Promise.all(
-    VIEW_PROMPTS.map(view => generateWithGemini3Pro(imageBase64, variant, referenceImages, view))
+    VIEW_PROMPTS.map(view => generateImage(imageBase64, variant, referenceImages, view, model))
   );
 
   const successfulImages: Array<{ image: string; angle: string }> = results
@@ -314,11 +316,14 @@ export async function POST(request: NextRequest) {
   
   try {
     const body: RequestBody = await request.json();
-    const { image, colorVariant, referenceImages = [] } = body;
+    const { image, colorVariant, referenceImages = [], model = "google/gemini-3-pro-image-preview" } = body;
 
     console.log("[API] Variant:", colorVariant?.name);
+    console.log("[API] Model:", model);
     console.log("[API] Image size:", Math.round(image?.length / 1024), "KB");
     console.log("[API] Reference images:", referenceImages.length);
+    console.log("[API] Reference source:", colorVariant.verticalImage);
+    referenceImages.forEach((img, i) => console.log(`  [${i + 1}] ${Math.round(img.length / 1024)} KB`));
 
     if (!image) {
       return NextResponse.json({ error: "No image provided" }, { status: 400 });
@@ -342,7 +347,7 @@ export async function POST(request: NextRequest) {
     // Step 2: Generate previews from multiple angles
     console.log("[API] Step 2: Generating previews...");
     const generationStart = Date.now();
-    const generation = await generatePreview(image, colorVariant, referenceImages);
+    const generation = await generatePreview(image, colorVariant, referenceImages, model);
     console.log("[API] Generation took:", Date.now() - generationStart, "ms");
     console.log("[API] Generated images:", generation.images?.length || 0);
     
